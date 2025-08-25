@@ -18,8 +18,8 @@
     bottom: 35mm,
   ),
 
-  // 将页脚基线放到"版心下边缘之下 10mm"
-  footer-descent: 10mm,
+  // 将页脚基线放到"版心下边缘之下 7mm"
+  footer-descent: 7mm,
 
   // 使用更稳定的奇偶页判断和页码格式
   footer: context {
