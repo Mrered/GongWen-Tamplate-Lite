@@ -149,7 +149,7 @@
 
 #let autoTitle = "测试文段"
 
-#let autoAuthor = "诸葛亮, 诸葛亮"
+#let autoAuthor = "诸葛亮、诸葛亮"
 
 #set document(
   title: autoTitle, 

@@ -150,13 +150,13 @@
 $if(title)$
 #let autoTitle = "$title$"
 $else$
-#let autoTitle = "这是一级标题"
+#let autoTitle = "请输入文字"
 $endif$
 
 $if(author)$
-#let autoAuthor = "$for(author)$$author$$sep$, $endfor$"
+#let autoAuthor = "$author$"
 $else$
-#let autoAuthor = "张三"
+#let autoAuthor = "请输入文字"
 $endif$
 
 #set document(

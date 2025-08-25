@@ -11,3 +11,6 @@ $RECYCLE.BIN/
 # Linux 系统默认忽略文件
 *~
 .Trash-*
+
+# 忽略 Microsoft 365 临时文件
+~$*
