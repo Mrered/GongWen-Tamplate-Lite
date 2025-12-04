@@ -74,6 +74,45 @@ function Meta(meta)
     -- io.stderr:write("No author field found in metadata\n")
   end
   
+    -- 处理 signature 字段：支持 MetaBool、MetaString、MetaInlines 等类型
+    if meta.signature == nil then
+      -- 默认值为 false
+      meta.signature = pandoc.MetaBool(false)
+    else
+      -- 将可能的字符串或 inlines 转换为布尔值
+      local sig_val = nil
+      if type(meta.signature) == "table" and meta.signature.t == "MetaBool" then
+        sig_val = meta.signature.c
+      else
+        -- 尝试把任意类型 stringify 后判断是否为 "true"/"yes"
+        local s = pandoc.utils.stringify(meta.signature)
+        local lowered = string.lower(s or "")
+        if lowered == "true" or lowered == "yes" then
+          sig_val = true
+        else
+          sig_val = false
+        end
+      end
+      meta.signature = pandoc.MetaBool( (sig_val == true) )
+    end
+
+    -- 将 date 字段（如 "2025-11-19"）转换为 typst 的 datetime(...) 形式
+    if meta.date then
+      local date_str = pandoc.utils.stringify(meta.date)
+      -- 匹配 YYYY-MM-DD（支持前后有空白）
+      local y, m, d = string.match((date_str or ""), "%s*(%d%d%d%d)%-(%d%d)%-(%d%d)%s*")
+      if y and m and d then
+        local dt = string.format("datetime(\n  year: %d,\n  month: %d,\n  day: %d,\n)", tonumber(y), tonumber(m), tonumber(d))
+        -- 以 RawInline('typst', ...) 形式传递，这样在模板中直接插入为 typst 代码
+        meta.date = pandoc.MetaInlines({pandoc.RawInline('typst', dt)})
+      else
+        -- 如果无法解析为 YYYY-MM-DD，传递为 typst 字符串字面量（带引号）
+        local esc = date_str:gsub('"', '\\"')
+        local quoted = '"' .. esc .. '"'
+        meta.date = pandoc.MetaInlines({pandoc.RawInline('typst', quoted)})
+      end
+    end
+
   return meta
 end
 

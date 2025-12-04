@@ -159,6 +159,12 @@ $else$
 #let autoAuthor = "请输入文字"
 $endif$
 
+$if(date)$
+#let autoDate = $date$
+$else$
+#let autoDate = ""
+$endif$
+
 #set document(
   title: autoTitle, 
   author: autoAuthor,
@@ -168,6 +174,20 @@ $endif$
 
 = #autoTitle
 
+$if(signature)$
+$else$
 #name(autoAuthor)
+$endif$
 
 $body$
+
+$if(signature)$
+#v(18pt)
+#align(right, block[
+  #set align(center)
+  #autoAuthor \
+  #autoDate.display(
+    "[year]年[month padding:none]月[day padding:none]日"
+  )
+])
+$endif$
