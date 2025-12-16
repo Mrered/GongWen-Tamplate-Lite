@@ -2,11 +2,11 @@
 #import "@preview/pointless-size:0.1.2": zh
 
 // 定义常用字体名称
-#let FONT_XBS = ("FZXiaoBiaoSong-B05") // 方正小标宋
-#let FONT_HEI = ("STHeiti") // 黑体
-#let FONT_FS = ("STFangsong") // 仿宋
-#let FONT_KAI = ("STKaiti") // 楷体
-#let FONT_SONG = ("STSong") // 宋体
+#let FONT_XBS = "FZXiaoBiaoSong-B05" // 方正小标宋
+#let FONT_HEI = "STHeiti" // 黑体
+#let FONT_FS = "STFangsong" // 仿宋
+#let FONT_KAI = "STKaiti" // 楷体
+#let FONT_SONG = "STSong" // 宋体
 
 // 设置页面、页边距、页脚
 #set page(
@@ -29,9 +29,9 @@
     let pm = text(font: FONT_SONG, size: zh(4))[— #num —] // 4 号宋体
 
     if is-even {
-      align(left, [#h(1em) #pm])    // 偶数页：居左
+      align(left, [#h(1em) #pm]) // 偶数页：居左
     } else {
-      align(right, [#pm #h(1em)])   // 奇数页：居右
+      align(right, [#pm #h(1em)]) // 奇数页：居右
     }
   },
 )
@@ -43,20 +43,35 @@
   size: zh(3),
   hyphenate: false,
   tracking: -0.3pt,
-  cjk-latin-spacing: auto
+  cjk-latin-spacing: auto,
 )
 
 // 设置段落样式，以满足"每行28字符，每页22行"的网格标准，首行缩进2字符
 #set par(
   first-line-indent: (amount: 2em, all: true),
   justify: true,
-  leading: (15.6pt), // 行间距
-  spacing: (15.6pt)  // 段间距
+  leading: 15.6pt, // 行间距
+  spacing: 15.6pt, // 段间距
 )
+
+// 设置列表样式：有序列表
+#set enum(
+  indent: 2em,
+  body-indent: 0.5em, // 序号后的间距
+)
+
+// 设置列表样式：无序列表
+#set list(
+  indent: 2em,
+  body-indent: 0.5em,
+  marker: ([•], [◦], [▪]), // 自定义标记层级
+)
+
+// #show list: it => pad(left: 2em, it)
 
 // 计数器设置
 #let h2-counter = counter("h2")
-#let h3-counter = counter("h3") 
+#let h3-counter = counter("h3")
 #let h4-counter = counter("h4")
 #let h5-counter = counter("h5")
 
@@ -70,7 +85,7 @@
       #text(
         font: FONT_XBS,
         size: zh(2),
-        weight: "bold"
+        weight: "bold",
       )[
         #set par(leading: 35pt - zh(2)) // 行距固定值35磅
         #body
@@ -92,7 +107,7 @@
     h3-counter.step()
     h4-counter.update(1)
     h5-counter.update(1)
-    
+
     let number = h3-counter.get().first()
     text(
       font: FONT_KAI,
@@ -102,7 +117,7 @@
     // 四级标题：首行缩进2字符，STFangsong 字号 zh(3)，使用 `1.` 作为序号
     h4-counter.step()
     h5-counter.update(1)
-    
+
     let number = h4-counter.get().first()
     text(
       size: zh(3),
@@ -110,7 +125,7 @@
   } else if level == 5 {
     // 五级标题：首行缩进2字符，STFangsong 字号 zh(3)，使用 `（1）` 作为序号
     h5-counter.step()
-    
+
     let number = h5-counter.get().first()
     text(
       size: zh(3),
@@ -120,14 +135,13 @@
 
 // 应用自定义标题样式
 #show heading: it => {
-  if it.level != 1{
+  if it.level != 1 {
     block(
-  sticky: true,
+      sticky: true,
       above: 13.9pt,
-      below: 13.9pt
+      below: 13.9pt,
     )[it]
-  }
-  else {
+  } else {
     it
   }
 }
@@ -138,7 +152,7 @@
 
 // 重置计数器在文档开始时
 #h2-counter.update(0)
-#h3-counter.update(0) 
+#h3-counter.update(0)
 #h4-counter.update(0)
 #h5-counter.update(0)
 
@@ -166,7 +180,7 @@ $else$
 $endif$
 
 #set document(
-  title: autoTitle, 
+  title: autoTitle,
   author: autoAuthor,
   keywords: "工作总结, 年终报告",
   date: auto,
@@ -187,7 +201,7 @@ $if(signature)$
   #set align(center)
   #autoAuthor \
   #autoDate.display(
-    "[year]年[month padding:none]月[day padding:none]日"
+    "[year]年[month padding:none]月[day padding:none]日",
   )
 ])
 $endif$

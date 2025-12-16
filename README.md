@@ -19,11 +19,11 @@
 
 ## 👀 效果预览
 
-[Markdown to Typst to PDF](/dist/out.typ.pdf)
+[Markdown to Typst to PDF](/dist/report.typ.pdf)
 
 对照组
 
-[Markdown to MS Word to PDF](/dist/out.docx.pdf)
+[Markdown to MS Word to PDF](/dist/report.docx.pdf)
 
 ## 🚀 快速上手
 
@@ -60,40 +60,9 @@ cd GongWen-Template-Lite
 
 ### 第 3 步：撰写你的文档
 
-模板仓库中已经包含了一个示例文件 in.md。你可以直接修改它，或者参考它的格式创建自己的 Markdown 文件。最关键的是文件头部的 YAML front-matter 配置，请务必填写：
+模板仓库中已经包含了一个示例文件 report.md。你可以直接修改它，或者参考它的格式创建自己的 Markdown 文件。最关键的是文件头部的 YAML front-matter 配置，请务必填写：
 
-```markdown
----
-title: "这里是你的文档主标题"
-author: 
-  - "作者一"
-  - "作者二" # 如果只有一个作者，保留一个即可
-date: "2025-12-16"
-signature: true
----
-
-::: {.noindent}
-这是一段不需要缩进的内容。
-
-这也是一段不需要缩进的内容。
-:::
-
-## 这是不需要缩进的一级标题 {.noindent}
-
-这是不需要缩进的一段话。 {.noindent}
-
-### 这是不需要缩进的二级标题{.noindent}
-
-这是不需要缩进的二段话。{.noindent}
-
-## 这是一级标题（对应 Markdown 的 H2）
-
-这是正文内容...
-
-### 这是二级标题（对应 Markdown 的 H3）
-
-这是更多的正文内容...
-```
+[report.md](report.md)
 
 注意：模板会自动忽略 Markdown 文件中的一级标题 (#)，并使用 YAML 配置中的 title 作为文档的正式标题。
 
@@ -102,10 +71,10 @@ signature: true
 打开终端，确保你位于项目目录下，然后运行以下命令：
 
 ```sh
-pandoc -f markdown -t typst --template template.typ in.md -L filter.lua | typst compile - out.pdf
+pandoc -f markdown -t typst --template template.typ report.md -L filter.lua | typst compile - report.pdf
 ```
 
-🎉 恭喜！现在你的文件夹里应该已经出现了一个名为 `out.pdf` 的文件，快打开看看吧！
+🎉 恭喜！现在你的文件夹里应该已经出现了一个名为 `report.pdf` 的文件，快打开看看吧！ [report.pdf](report.pdf)
 
 🤔 这条命令做了什么？
 
@@ -113,34 +82,34 @@ pandoc -f markdown -t typst --template template.typ in.md -L filter.lua | typst 
 
 `--template template.typ`: 指定使用我们的公文模板进行渲染。
 
-`in.md`: 你撰写的输入文件。
+`report.md`: 你撰写的输入文件。
 
 `-L filter.lua`: 加载一个过滤器脚本，它能帮助我们优化标题格式，让转换更完美。
 
-`| typst compile - out.pdf`: 将 Pandoc 生成的 Typst 内容通过管道传给 Typst，最终编译成 `out.pdf`。
+`| typst compile - report.pdf`: 将 Pandoc 生成的 Typst 内容通过管道传给 Typst，最终编译成 `report.pdf`。
 
 ## 🔧 更多用法
 
 如果你想查看从 Markdown 转换到 Typst 的中间文件（`.typ`），方便进行调试或修改，可以使用下面的命令：
 
 ```sh
-pandoc -f markdown -t typst --template template.typ in.md -L filter.lua -o out.typ
+pandoc -f markdown -t typst --template template.typ report.md -L filter.lua -o report.typ
 ```
 
-这会生成一个 `out.typ` 文件，你可以用文本编辑器打开它。
+这会生成一个 `report.typ` 文件，你可以用文本编辑器打开它。 [report.typ](report.typ)
 
 你可以进一步将其转换成 PDF 文件：
 
 ```sh
-typst compile out.typ out.pdf
+typst compile report.typ report.pdf
 ```
 
 ## 📄 Microsoft Word
 
-如果你更熟悉 Microsoft Word，也可以将 `.md` 文档转换为 `.docx` 文档，并使用模板进行格式化。本模板使用的 [in.md](/in.md) 可以直接转换成 `docx` 文件，可以使用下面的命令：
+如果你更熟悉 Microsoft Word，也可以将 `.md` 文档转换为 `.docx` 文档，并使用模板进行格式化。本模板使用的 [report.md](/report.md) 可以直接转换成 `docx` 文件，可以使用下面的命令：
 
 ```sh
-pandoc -f markdown -t docx --reference-doc=template.dotx -L filter.lua in.md -o out.docx
+pandoc -f markdown -t docx --reference-doc=template.dotx -L filter.lua report.md -o report.docx
 ```
 
 当然，你可以直接打开 `template.dotx` 文件， Microsoft Word 会自动以此为模板创建空白 Word 文档，你只需要套用样式，就能生成一个美观的文档。
