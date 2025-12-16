@@ -167,11 +167,31 @@
 = #autoTitle
 
 
-== 一级标题a
+#block[#set par(first-line-indent: 0pt)
+#block[
+这是一段不需要缩进的内容。
 
+这也是一段不需要缩进的内容。
+
+]
+]
+#block[#set par(first-line-indent: 0pt)
+== 一级标题a
+]
+
+#block[#set par(first-line-indent: 0pt)
+这是不需要缩进的一段话。
+
+]
+#block[#set par(first-line-indent: 0pt)
+这是不需要缩进的二段话。
+
+]
 《出师表》是三国时期蜀汉丞相诸葛亮在北伐前上给后主刘禅的一篇著名奏章，分为《前出师表》和《后出师表》，最常见、流传最广的是《前出师表》。
 
+#block[#set par(first-line-indent: 0pt)
 == 一级标题b
+]
 
 它不仅是一篇政治文书，也是中国文学史上的经典散文，感情真挚、辞采恳切。
 
