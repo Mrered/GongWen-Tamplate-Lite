@@ -149,7 +149,13 @@
 
 #let autoTitle = "测试文段"
 
-#let autoAuthor = "诸葛亮、诸葛亮"
+#let autoAuthor = "诸葛亮、亮葛诸"
+
+#let autoDate = datetime(
+  year: 2025,
+  month: 12,
+  day: 16,
+)
 
 #set document(
   title: autoTitle, 
@@ -160,7 +166,6 @@
 
 = #autoTitle
 
-#name(autoAuthor)
 
 == 一级标题a
 
@@ -176,7 +181,7 @@
 
 == 一级标题d
 
-#strong[《出师表》（前出师表）];臣亮言：先帝创业未半而中道崩殂，今天下三分，益州疲弊，此诚危急存亡之秋也。
+#strong[《出师表》（前出师表）]臣亮言：先帝创业未半而中道崩殂，今天下三分，益州疲弊，此诚危急存亡之秋也。
 
 == 一级标题e
 
@@ -352,3 +357,12 @@
 === 二级标题6
 
 独约泊飘虚古在远全闷然一师大也食成状超去奈瑕谷数跨主雌事右枉莫根躁人窈黑万大兆言守其智直泊精强君多天新亦敢壮而终惑惟飘必信去、恍子朴混根子年观万阅还策愚丧礼愚吹子生今从还察绳常莫虽彰飘隳圣敢随关精关雄善成用混为、迹礼人智下随白朝窈智骄窈朝资骄真非跨昏随寥朴“余如辙割嘘朝异法居吾若甫去乎善如极乘之燕未荒甚军白淡！重开我极。
+
+#v(18pt)
+#align(right, block[
+  #set align(center)
+  #autoAuthor \
+  #autoDate.display(
+    "[year]年[month padding:none]月[day padding:none]日"
+  )
+])

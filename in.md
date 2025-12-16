@@ -2,7 +2,9 @@
 title: "测试文段"
 author: 
   - "诸葛亮"
-  - "诸葛亮"
+  - "亮葛诸"
+date: "2025-12-16"
+signature: true
 ---
 
 # 测试文段
