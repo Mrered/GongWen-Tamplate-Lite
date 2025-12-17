@@ -42,7 +42,6 @@
   font: FONT_FS,
   size: zh(3),
   hyphenate: false,
-  tracking: -0.3pt,
   cjk-latin-spacing: auto,
 )
 
