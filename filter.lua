@@ -4,6 +4,46 @@ local authors_string = ""
 local has_seen_header = false
 
 -- =================================================================================
+-- 辅助函数：处理垂直空白和分页标记
+-- =================================================================================
+
+-- 处理 {v} 和 {v:n} 标记，返回对应的 Typst 代码
+-- {v} => #v(1lh)  （空一行，使用行高单位）
+-- {v:n} => #v(nlh) （空n行）
+-- 参考: https://typst.app/docs/reference/layout/v/
+local function process_v_marker(text)
+  -- 匹配 {v:数字}
+  local n = text:match('^{v:(%d+)}$')
+  if n then
+    local count = tonumber(n)
+    local result = {}
+    -- 生成 count 个 #linebreak(justify: false)
+    for i = 1, count do
+      table.insert(result, "#linebreak(justify: false)")
+    end
+    -- 合并为一个字符串，每个换行符分隔
+    return table.concat(result, "\n")
+  elseif text == "{v}" then
+    -- 默认一行
+    return "#linebreak(justify: false)"
+  end
+  return nil
+end
+
+-- 处理分页标记
+-- {pagebreak} => #pagebreak()
+-- {pagebreak:weak} => #pagebreak(weak: true)
+-- 参考: https://typst.app/docs/reference/layout/pagebreak/
+local function process_pagebreak_marker(text)
+  if text == '{pagebreak}' then
+    return '#pagebreak()'
+  elseif text == '{pagebreak:weak}' then
+    return '#pagebreak(weak: true)'
+  end
+  return nil
+end
+
+-- =================================================================================
 -- 阶段 1: Normalize (标准化)
 -- 功能：纯粹的属性解析。
 -- 1. 将中文作者列表处理为 authors_string（元数据处理）。
@@ -11,8 +51,8 @@ local has_seen_header = false
 --    由于 Para/Plain 不支持 classes，我们将其包裹在 Div 中：
 --    `Para` -> `Div(Para, .noindent)`
 --    `Plain` -> `Div(Plain, .noindent)`
---    (注意：Typst 渲染时，这个 Div 会变成 #block，所以即使 Plain 也可以)
--- 3. 解析“冒号结尾问候语”，同样包裹在 Div 中。
+-- 3. 解析"冒号结尾问候语"，同样包裹在 Div 中。
+-- 4. 处理 {v}, {v:n}, {pagebreak}, {pagebreak:weak} 标记
 -- =================================================================================
 local normalize = {
   -- 处理元数据（保持原有逻辑）
@@ -105,16 +145,66 @@ local normalize = {
     return h
   end,
   
+  -- 处理 RawInline: 识别 {v}, {v:n}, {pagebreak}, {pagebreak:weak} 标记
+  RawInline = function(el)
+    if el.format == '' or el.format == 'html' then
+      local text = el.text:match('^%s*(.-)%s*$') -- 去除首尾空白
+      
+      -- 处理 {v} 和 {v:n}
+      local v_result = process_v_marker(text)
+      if v_result then
+        return pandoc.RawInline('typst', v_result)
+      end
+      
+      -- 处理 {pagebreak} 和 {pagebreak:weak}
+      local pb_result = process_pagebreak_marker(text)
+      if pb_result then
+        return pandoc.RawInline('typst', pb_result)
+      end
+    end
+    return el
+  end,
+  
+  -- 处理 RawBlock: 识别 {v}, {v:n}, {pagebreak}, {pagebreak:weak} 标记
+  RawBlock = function(el)
+    if el.format == '' or el.format == 'html' then
+      local text = el.text:match('^%s*(.-)%s*$') -- 去除首尾空白
+      
+      -- 处理 {v} 和 {v:n}
+      local v_result = process_v_marker(text)
+      if v_result then
+        return pandoc.RawBlock('typst', v_result .. '\n')
+      end
+      
+      -- 处理 {pagebreak} 和 {pagebreak:weak}
+      local pb_result = process_pagebreak_marker(text)
+      if pb_result then
+        return pandoc.RawBlock('typst', pb_result .. '\n')
+      end
+    end
+    return el
+  end,
+  
   -- 通用 block 处理逻辑 (Para, Plain)
   Para = function(el)
     local explicit_indent = false
     local explicit_noindent = false
     
-    -- 1. 检查 classes (Para 本身通常没有 classes，但如果 pandoc 以后支持呢？)
-    -- 注意：Pandoc Lua Para 不支持 classes 属性，所以可以跳过检查 el.classes (即使有也拿不到)
-    -- 但是为了逻辑完整性，如果 el 是通过 Div 降级来的？不管了，主要靠标记
+    -- 检查整个段落是否只是 {v} 或 {v:n} 或 {pagebreak} 标记
+    local para_text = pandoc.utils.stringify(el)
+    local trimmed = para_text:match('^%s*(.-)%s*$')
     
-    -- 2. 检查 content
+    local v_result = process_v_marker(trimmed)
+    if v_result then
+      return pandoc.RawBlock('typst', v_result .. '\n')
+    end
+    
+    local pb_result = process_pagebreak_marker(trimmed)
+    if pb_result then
+      return pandoc.RawBlock('typst', pb_result .. '\n')
+    end
+    
+    -- 检查 content 中的缩进标记
     local content = el.content
     if #content > 0 then
       local last = content[#content]
@@ -170,9 +260,23 @@ local normalize = {
   end,
   
   Plain = function(el) 
-    -- 几乎与 Para 相同，只是如果需要 noindent，也返回 Div(Plain)
+    -- 与 Para 相同的逻辑
     local explicit_indent = false
     local explicit_noindent = false
+    
+    -- 检查整个段落是否只是 {v} 或 {v:n} 或 {pagebreak} 标记
+    local para_text = pandoc.utils.stringify(el)
+    local trimmed = para_text:match('^%s*(.-)%s*$')
+    
+    local v_result = process_v_marker(trimmed)
+    if v_result then
+      return pandoc.RawBlock('typst', v_result .. '\n')
+    end
+    
+    local pb_result = process_pagebreak_marker(trimmed)
+    if pb_result then
+      return pandoc.RawBlock('typst', pb_result .. '\n')
+    end
     
     local content = el.content
     if #content > 0 then
@@ -204,8 +308,26 @@ local normalize = {
       -- Plain 需要包裹在 Div 中
       return pandoc.Div({el}, pandoc.Attr("", {"noindent"}))
     elseif explicit_indent then
-      -- 也可以转为 Para，或者保持 Plain
       return el
+    end
+    
+    return el
+  end,
+  
+  -- 处理 Str 内联元素中的 {v}, {v:n}, {pagebreak} 标记
+  Str = function(el)
+    local text = el.text
+    
+    -- 处理 {v} 和 {v:n}
+    local v_result = process_v_marker(text)
+    if v_result then
+      return pandoc.RawInline('typst', v_result)
+    end
+    
+    -- 处理 {pagebreak} 和 {pagebreak:weak}
+    local pb_result = process_pagebreak_marker(text)
+    if pb_result then
+      return pandoc.RawInline('typst', pb_result)
     end
     
     return el
@@ -215,31 +337,25 @@ local normalize = {
 -- =================================================================================
 -- 阶段 2: Structure (结构化)
 -- 功能：处理列表层级的缩进抵消。
--- 逻辑：如果列表项或包含列表的容器被标记为 noindent，则对整个列表块应用 pad(left: -2em)。
 -- =================================================================================
 local structure = {
   BulletList = function(el)
-    -- 检查第一项的第一个 Block 是否有 noindent class
-    -- 现在 Normalize 阶段会把 noindent 的 Block 包裹在 Div 中
     if #el.content > 0 then
       local first_item = el.content[1]
-      -- first_item 是 List of Blocks
       if #first_item > 0 then
         local first_block = first_item[1]
         
-        -- 情况 1: Header (Header 有 classes)
         if first_block.t == 'Header' and first_block.classes and first_block.classes:includes('noindent') then
              return {
-             pandoc.RawBlock('typst', '#pad(left: -2em)[\n'),
+             pandoc.RawBlock('typst', '#block[#set par(first-line-indent: 0pt)\n'),
              el,
              pandoc.RawBlock('typst', ']\n')
            }
         end
         
-        -- 情况 2: Div (Para/Plain 被包裹在 Div 中)
         if first_block.t == 'Div' and first_block.classes and first_block.classes:includes('noindent') then
            return {
-             pandoc.RawBlock('typst', '#pad(left: -2em)[\n'),
+             pandoc.RawBlock('typst', '#block[#set par(first-line-indent: 0pt)\n'),
              el,
              pandoc.RawBlock('typst', ']\n')
            }
@@ -250,7 +366,6 @@ local structure = {
   end,
   
   OrderedList = function(el)
-    -- 同 BulletList
     if #el.content > 0 then
       local first_item = el.content[1]
       if #first_item > 0 then
@@ -258,7 +373,7 @@ local structure = {
         
         if first_block.t == 'Header' and first_block.classes and first_block.classes:includes('noindent') then
              return {
-             pandoc.RawBlock('typst', '#pad(left: -2em)[\n'),
+             pandoc.RawBlock('typst', '#block[#set par(first-line-indent: 0pt)\n'),
              el,
              pandoc.RawBlock('typst', ']\n')
            }
@@ -266,7 +381,7 @@ local structure = {
         
         if first_block.t == 'Div' and first_block.classes and first_block.classes:includes('noindent') then
            return {
-             pandoc.RawBlock('typst', '#pad(left: -2em)[\n'),
+             pandoc.RawBlock('typst', '#block[#set par(first-line-indent: 0pt)\n'),
              el,
              pandoc.RawBlock('typst', ']\n')
            }
@@ -279,14 +394,12 @@ local structure = {
   -- 处理 Div 包裹的 List
   Div = function(el)
     if el.classes and el.classes:includes('noindent') then
-      -- Manual iteration over content blocks
       local new_content = pandoc.List()
       for i, b in ipairs(el.content) do
         local processed = false
         if b.t == 'BulletList' or b.t == 'OrderedList' then
-           -- Wrap list in pad
            new_content:extend({
-             pandoc.RawBlock('typst', '#pad(left: -2em)[\n'),
+             pandoc.RawBlock('typst', '#block[#set par(first-line-indent: 0pt)\n'),
              b,
              pandoc.RawBlock('typst', ']\n')
            })
@@ -310,7 +423,7 @@ local structure = {
 -- =================================================================================
 local render = {
   Header = function(h)
-    -- Clear identifier to suppress auto-generated labels (moved from normalize)
+    -- Clear identifier to suppress auto-generated labels
     h.identifier = ""
     
     if h.classes and h.classes:includes('noindent') then
@@ -318,14 +431,13 @@ local render = {
         return {
           pandoc.RawBlock('typst', '#block[#set par(first-line-indent: 0pt)\n'),
           h,
-          pandoc.RawBlock('typst', ']\n\n') -- Add extra newline
+          pandoc.RawBlock('typst', ']\n\n')
         }
       elseif FORMAT:match 'docx' then
         h.attributes['custom-style'] = 'NoIndent'
         return h
       end
     else
-        -- Standard header: append valid newline for Typst
         if FORMAT:match 'typst' then
             return {
                 h,
@@ -339,8 +451,6 @@ local render = {
   Div = function(el)
     if el.classes and el.classes:includes('noindent') then
       if FORMAT:match 'typst' then
-        -- 这里的 Div 可能是我们自己包裹的 (Para/Plain)，也可能是 markdown 写的 Div
-        -- 无论哪种，都直接渲染为 #block[...] 包裹内容
         return {
           pandoc.RawBlock('typst', '#block[#set par(first-line-indent: 0pt)\n'),
           el,

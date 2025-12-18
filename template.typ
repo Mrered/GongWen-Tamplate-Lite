@@ -53,21 +53,6 @@
   spacing: 15.6pt, // 段间距
 )
 
-// 设置列表样式：有序列表
-#set enum(
-  indent: 2em,
-  body-indent: 0.5em, // 序号后的间距
-)
-
-// 设置列表样式：无序列表
-#set list(
-  indent: 2em,
-  body-indent: 0.5em,
-  marker: ([•], [◦], [▪]), // 自定义标记层级
-)
-
-// #show list: it => pad(left: 2em, it)
-
 // 计数器设置
 #let h2-counter = counter("h2")
 #let h3-counter = counter("h3")
@@ -154,6 +139,58 @@
 #h3-counter.update(0)
 #h4-counter.update(0)
 #h5-counter.update(0)
+
+// 将列表项转换为普通段落以实现“续行顶格”
+// 列表层级计数器，用于处理嵌套缩进
+#let list-depth = state("list-depth", 0)
+
+// 将列表项转换为普通段落以实现“续行顶格”
+#let flush-left-list(it) = {
+  // 1. 更新层级深度
+  list-depth.update(d => d + 1)
+
+  let is-enum = (it.func() == enum)
+  let children = it.children
+
+  // 2. 获取当前缩进状态（普通列表继承 2em，noindent 列表继承 0pt）
+  //    并根据层级计算额外的块级缩进 (Left Padding)
+  context {
+    let depth = list-depth.get()
+    // 第一层(depth=1)不需要额外padding，第二层(depth=2)需要 2em，以此类推
+    let block-indent = if depth > 1 { 2em } else { 0pt }
+
+    // 3. 计算枚举项数量，用于编号
+    pad(left: block-indent, block({
+      for (count, item) in children.enumerate(start: 1) {
+        if item.func() == list.item or item.func() == enum.item {
+          let marker = if is-enum {
+            let pattern = if it.has("numbering") and it.numbering != auto { it.numbering } else { "1." }
+            numbering(pattern, count)
+          } else {
+            if it.has("marker") and it.marker.len() > 0 { it.marker.at(0) } else { [•] }
+          }
+
+          // 4. 生成段落
+          //    继承 first-line-indent（由外部环境决定，如 2em 或 0pt）
+          //    强制 hanging-indent 为 0pt（实现续行左对齐）
+          par(
+            first-line-indent: par.first-line-indent,
+            hanging-indent: 0pt,
+          )[#marker#h(0.25em)#item.body]
+        } else {
+          item
+        }
+      }
+    }))
+
+    // 5. 恢复层级深度
+    list-depth.update(d => d - 1)
+  }
+}
+
+// 应用规则
+#show list: flush-left-list
+#show enum: flush-left-list
 
 // 定义作者名称显示样式
 #let name(name) = align(center, pad(bottom: 0.8em)[
