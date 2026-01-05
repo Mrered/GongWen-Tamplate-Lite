@@ -19,11 +19,7 @@
 
 ## 👀 效果预览
 
-[Markdown to Typst to PDF](/dist/report.typ.pdf)
-
-对照组
-
-[Markdown to MS Word to PDF](/dist/report.docx.pdf)
+[Markdown to Typst to PDF](/report.pdf)
 
 ## 🚀 快速上手
 
@@ -124,6 +120,10 @@ pandoc -f markdown -t docx --reference-doc=template.dotx -L filter.lua report.md
 - 发起 Pull Request：如果你修复了 Bug 或者增加了新功能，欢迎提交 PR。
 
 一些可以改进的方向：使其更符合国家公文标准。增加对更多字体或系统的支持。优化 `template.typ` 和 `filter.lua` 脚本。
+
+## 🔮 计划
+
+- [ ] 使用 wails 开发桌面应用。
 
 ## 📄 许可证
 
