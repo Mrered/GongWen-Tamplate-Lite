@@ -59,6 +59,23 @@
 #let h4-counter = counter("h4")
 #let h5-counter = counter("h5")
 
+// 图片样式设置
+#show figure: it => {
+  // 居中对齐，无首行缩进
+  set par(first-line-indent: 0pt)
+  align(center, block({
+    // 图片尺寸由 Lua filter 控制
+    it.body
+
+    // 图注样式：3号仿宋，格式为"图1 标题"
+    text(
+      font: FONT_FS,
+      size: zh(3),
+      it.caption,
+    )
+  }))
+}
+
 // 自定义标题函数
 #let custom-heading(level, body, numbering: auto) = {
   if level == 1 {
@@ -140,11 +157,11 @@
 #h4-counter.update(0)
 #h5-counter.update(0)
 
-// 将列表项转换为普通段落以实现“续行顶格”
+// 将列表项转换为普通段落以实现"续行顶格"
 // 列表层级计数器，用于处理嵌套缩进
 #let list-depth = state("list-depth", 0)
 
-// 将列表项转换为普通段落以实现“续行顶格”
+// 将列表项转换为普通段落以实现"续行顶格"
 #let flush-left-list(it) = {
   // 1. 更新层级深度
   list-depth.update(d => d + 1)

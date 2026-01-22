@@ -2,6 +2,8 @@
 local authors_string = ""
 -- 全局变量：是否已经遇到了标题
 local has_seen_header = false
+-- 全局变量：图片计数器
+local figure_counter = 0
 
 -- =================================================================================
 -- 辅助函数：处理垂直空白和分页标记
@@ -185,10 +187,71 @@ local normalize = {
     return el
   end,
   
-  -- 通用 block 处理逻辑 (Para, Plain)
+  
+  -- 处理图片元素
+  -- 由于 Image 是内联元素，我们需要返回一个包含 RawInline 的列表
+  -- 但为了更好地处理图片，我们将其转换为块级元素
   Para = function(el)
     local explicit_indent = false
     local explicit_noindent = false
+    
+    -- 检查段落是否只包含一个图片
+    if #el.content == 1 and el.content[1].t == 'Image' then
+      local img = el.content[1]
+      
+      -- 递增计数器
+      figure_counter = figure_counter + 1
+      
+      -- 提取文件名（不含路径和扩展名）
+      local path = img.src
+      local filename = path:match("([^/]+)$") or path  -- 提取文件名
+      local caption = filename:gsub("%.[^.]*$", "")     -- 去除扩展名
+      
+      -- 生成 Typst figure 代码
+      -- 在 Typst 中测量图片尺寸并应用等比例缩放算法
+      -- caption 不包含编号，由 Typst 自动添加
+      local typst_code = string.format(
+        '#figure(\n' ..
+        '  context {\n' ..
+        '    let img = image("%s")\n' ..
+        '    let img-size = measure(img)\n' ..
+        '    let x = img-size.width\n' ..
+        '    let y = img-size.height\n' ..
+        '    let max-size = 13.4cm\n' ..
+        '    \n' ..
+        '    // 应用缩放算法：计算缩放比例，保持图片比例\n' ..
+        '    let new-x = x\n' ..
+        '    let new-y = y\n' ..
+        '    \n' ..
+        '    // 如果宽度超过限制，按宽度缩放\n' ..
+        '    if x > max-size {\n' ..
+        '      let scale = max-size / x\n' ..
+        '      new-x = max-size\n' ..
+        '      new-y = y * scale\n' ..
+        '    }\n' ..
+        '    \n' ..
+        '    // 如果高度仍然超过限制，再按高度缩放\n' ..
+        '    if new-y > max-size {\n' ..
+        '      let scale = max-size / new-y\n' ..
+        '      new-x = new-x * scale\n' ..
+        '      new-y = max-size\n' ..
+        '    }\n' ..
+        '    \n' ..
+        '    image("%s", width: new-x, height: new-y)\n' ..
+        '  },\n' ..
+        '  caption: [%s],\n' ..
+        ') <fig-%%d>\n',
+        path,
+        path,
+        caption
+      )
+      
+      -- 替换 %%d 为实际的 figure_counter
+      typst_code = typst_code:gsub('%%d', tostring(figure_counter))
+      
+      -- 返回 RawBlock 以插入 Typst 代码
+      return pandoc.RawBlock('typst', typst_code)
+    end
     
     -- 检查整个段落是否只是 {v} 或 {v:n} 或 {pagebreak} 标记
     local para_text = pandoc.utils.stringify(el)
