@@ -229,24 +229,24 @@
   #text(font: FONT_KAI, size: zh(3))[#name]
 ])
 
-#let autoTitle = "报告"
+#let autoTitle = "类公文模板|简介"
 
 #let autoAuthor = "Mrered Cio、Gemini、ChatGPT"
 
 #let autoDate = datetime(
-  year: 2025,
-  month: 12,
-  day: 16,
+  year: 2026,
+  month: 1,
+  day: 23,
 )
 
 #set document(
-  title: autoTitle,
+  title: autoTitle.replace("|", " "),
   author: autoAuthor,
   keywords: "工作总结, 年终报告",
   date: auto,
 )
 
-= #autoTitle
+= #autoTitle.split("|").map(s => s.trim()).join(linebreak())
 
 
 #block[#set par(first-line-indent: 0pt)
@@ -256,13 +256,13 @@
 ]
 ]
 为了解放公文写作的负担，我们推出了
-`GongWen-Template-Lite`（公文模版青春版），下面将详细介绍这个项目。
+`GongWen-Template-Lite`（类公文模板），下面将详细介绍这个项目。
 
 == 项目概述
 
 === 项目背景与定位
 
-开源项目 `GongWen-Template-Lite`（公文模版青春版） 近日在 GitHub
+开源项目 `GongWen-Template-Lite`（类公文模板） 近日在 GitHub
 上完成更新，面向个人报告与工作总结等应用场景，提供了一套轻量级的公文排版解决方案。项目以“降低写作负担、提高成稿效率”为目标，强调作者只需专注内容本身，版式与样式交由模板自动完成。
 
 === 技术路线与核心理念
@@ -299,6 +299,13 @@ Markdown 一级标题，以 `title` 作为正式文档标题。
 模板内置了智能的“防孤儿标题”机制（Sticky
 Heading），强制确保标题与随后的正文段落（至少 2
 行的高度）保持在同一页。即便标题位于页底看似有空间，若不足以容纳后续内容，也会自动整体移动到下一页，从而保证阅读的连贯性与专业度。
+
+=== 标题换行控制
+
+在 Markdown 的 YAML front-matter 或正文中，如果标题过长，可以使用 `|`
+符号强制换行。例如设置 `title: "类公文模板|简介"`，在生成的 PDF
+主标题中会自动分为两行显示，而在 PDF
+文档属性（Metadata）中则会自动替换为空格，保持单行整洁。
 
 === 段落缩进控制
 
@@ -748,12 +755,12 @@ Word 中套用既定样式，兼顾不同使用习惯。
 === 社区协作与维护状态
 
 维护者欢迎通过工单与拉取请求参与改进，重点方向包括国标适配细化、字体与系统兼容性扩展，以及
-Typst 模板与 Lua 脚本的进一步优化。从更新节奏来看，项目在 2025
-年末仍保持活跃提交，体现出持续维护的态度。
+Typst 模板与 Lua 脚本的进一步优化。从更新节奏来看，项目在 2026
+年初仍保持活跃提交，体现出持续维护的态度。
 
 == 总体评价
 
-总体而言，`GongWen-Template-Lite`（公文模版青春版）
+总体而言，`GongWen-Template-Lite`（类公文模板）
 以低门槛的工具链，将原本繁琐的公文样式配置高度自动化，兼顾 Markdown
 的写作效率与成稿质量。对于需要在较短时间内生成规范化 PDF 或 Word
 文档的个人与小团队而言，该项目提供了一种轻便而务实的解决方案。随着社区参与度提升与国标适配的逐步完善，其在中文文档工作流中的实用价值有望进一步增强。

@@ -248,13 +248,13 @@ $else$
 $endif$
 
 #set document(
-  title: autoTitle,
+  title: autoTitle.replace("|", " "),
   author: autoAuthor,
   keywords: "工作总结, 年终报告",
   date: auto,
 )
 
-= #autoTitle
+= #autoTitle.split("|").map(s => s.trim()).join(linebreak())
 
 $if(signature)$
 $else$
