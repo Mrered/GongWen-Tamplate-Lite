@@ -59,6 +59,23 @@
 #let h4-counter = counter("h4")
 #let h5-counter = counter("h5")
 
+// 图片样式设置
+#show figure: it => {
+  // 居中对齐，无首行缩进
+  set par(first-line-indent: 0pt)
+  align(center, block({
+    // 图片尺寸由 Lua filter 控制
+    it.body
+
+    // 图注样式：3号仿宋，格式为"图1 标题"
+    text(
+      font: FONT_FS,
+      size: zh(3),
+      it.caption,
+    )
+  }))
+}
+
 // 自定义标题函数
 #let custom-heading(level, body, numbering: auto) = {
   if level == 1 {
@@ -140,11 +157,11 @@
 #h4-counter.update(0)
 #h5-counter.update(0)
 
-// 将列表项转换为普通段落以实现“续行顶格”
+// 将列表项转换为普通段落以实现"续行顶格"
 // 列表层级计数器，用于处理嵌套缩进
 #let list-depth = state("list-depth", 0)
 
-// 将列表项转换为普通段落以实现“续行顶格”
+// 将列表项转换为普通段落以实现"续行顶格"
 #let flush-left-list(it) = {
   // 1. 更新层级深度
   list-depth.update(d => d + 1)
@@ -343,6 +360,343 @@ Markdown 一级标题，以 `title` 作为正式文档标题。
 标记`{pagebreak}`的行，会自动分页。
 
 #pagebreak()
+
+== 图片排版功能展示
+
+本模板支持强大的图片自动排版功能，以下是实际效果展示：
+
+=== 单张图片展示
+
+单张图片会自动居中，最大宽度或高度限制为
+13.4cm，并自动提取文件名作为图注：
+
+#figure(
+  context {
+    let img = image("风景.webp")
+    let img-size = measure(img)
+    let x = img-size.width
+    let y = img-size.height
+    let max-size = 13.4cm
+    
+    let new-x = x
+    let new-y = y
+    
+    if x > max-size {
+      let scale = max-size / x
+      new-x = max-size
+      new-y = y * scale
+    }
+    
+    if new-y > max-size {
+      let scale = max-size / new-y
+      new-x = new-x * scale
+      new-y = max-size
+    }
+    
+    image("风景.webp", width: new-x, height: new-y)
+  },
+  caption: [风景],
+) <fig-1>
+#figure(
+  context {
+    let img = image("AI人像.jpg")
+    let img-size = measure(img)
+    let x = img-size.width
+    let y = img-size.height
+    let max-size = 13.4cm
+    
+    let new-x = x
+    let new-y = y
+    
+    if x > max-size {
+      let scale = max-size / x
+      new-x = max-size
+      new-y = y * scale
+    }
+    
+    if new-y > max-size {
+      let scale = max-size / new-y
+      new-x = new-x * scale
+      new-y = max-size
+    }
+    
+    image("AI人像.jpg", width: new-x, height: new-y)
+  },
+  caption: [AI人像],
+) <fig-2>
+=== 多图并排（独立模式）
+
+在同一行只需连续放置图片，即可自动并排。系统会自动计算高度以保持对齐。即便是比例差异巨大的图片（如横屏风景图
+vs 竖屏人像图），也能完美对齐：
+
+#context {
+  // 图片路径列表
+  let paths = ("风景.webp", "AI人像.jpg")
+  // 图片标题列表（对应 paths）
+  let captions = ("风景", "AI人像")
+  // Alt Text 列表
+  let alts = ("", "")
+  
+  let is_subfigure = false 
+  let main_caption = ""
+  
+  let gap = 0.3cm  // 图片间隙
+  let max-width = 13.4cm
+  let min-height = 6cm
+  
+  // 测量所有图片的原始尺寸
+  let sizes = paths.zip(captions).zip(alts).map(item => {
+    let p = item.at(0).at(0)
+    let c = item.at(0).at(1)
+    let alt = item.at(1)
+    let img = image(p)
+    let s = measure(img)
+    (width: s.width, height: s.height, path: p, caption: c, alt: alt, ratio: s.width / s.height)
+  })
+  
+  // 函数：计算一组图片等高排列时的高度
+  let calc-row-height(imgs, total-width) = {
+    // 计算所有图片宽高比之和
+    let ratio-sum = imgs.map(i => i.ratio).sum()
+    // 等高时的高度 = 总宽度 / 宽高比之和
+    total-width / ratio-sum
+  }
+  
+  // 分行算法
+  let rows = ()
+  
+  if is_subfigure {
+    // 方案一（子图模式）：强制所有图片在同一行
+    rows.push(sizes)
+  } else {
+    // 方案二（独立模式）：自动换行逻辑
+    let remaining = sizes
+    
+    while remaining.len() > 0 {
+      let row = ()
+      let found = false
+      
+      // 尝试放入尽可能多的图片
+      for n in range(1, remaining.len() + 1) {
+        let candidate = remaining.slice(0, n)
+        let gaps = (n - 1) * gap
+        let available-width = max-width - gaps
+        let row-h = calc-row-height(candidate, available-width)
+        
+        if row-h < min-height and n > 1 {
+          // 高度不够，使用前一个数量
+          row = remaining.slice(0, n - 1)
+          remaining = remaining.slice(n - 1)
+          found = true
+          break
+        }
+      }
+      
+      if not found {
+        // 所有图片都能放，或者只有一张图片
+        row = remaining
+        remaining = ()
+      }
+      
+      rows.push(row)
+    }
+  }
+  
+  // 渲染函数
+  let render-rows(rows) = {
+    for row in rows {
+      let n = row.len()
+      let gaps = (n - 1) * gap
+      let available-width = max-width - gaps
+      let row-height = calc-row-height(row, available-width)
+      
+      // 限制最大高度
+      if row-height > max-width {
+        row-height = max-width
+      }
+      
+      align(center, grid(
+        columns: n,
+        gutter: gap,
+        ..row.enumerate().map(item => {
+          let i = item.at(0)
+          let img-data = item.at(1)
+          // 使用比例计算宽度：w = row-height * ratio
+          let w = row-height * img-data.ratio
+          
+          if is_subfigure {
+             // 子图模式：上面是图，下面是 (a) 文件名
+             // 使用文件名(img-data.caption)作为子图注，忽略其他 Alt
+             let sub-label = numbering("a", i + 1)
+             let sub-text = [ (#sub-label) #img-data.caption ]
+             
+             v(0.5em)
+             align(center, block({
+               image(img-data.path, width: w, height: row-height)
+               // 子图注样式：与大图注一致 (FONT_FS, zh(3))
+               align(center, text(font: FONT_FS, size: zh(3))[#sub-text])
+             }))
+          } else {
+             // 独立模式：完整的 figure
+             figure(
+               image(img-data.path, width: w, height: row-height),
+               caption: [ #img-data.caption ]
+             )
+          }
+        })
+      ))
+      if is_subfigure { v(0.5em) } else { v(0.3em) }
+    }
+  }
+  
+  // 根据模式输出
+  if is_subfigure {
+    figure(
+      context { render-rows(rows) },
+      caption: [ #main_caption ]
+    )
+  } else {
+    render-rows(rows)
+  }
+}
+
+=== 子图组合模式（推荐）
+
+如果需要展示对比图或关联图，只需在第一张图片中添加说明（Alt
+Text），系统自动将其作为一组子图处理，生成 `(a)`、`(b)` 编号：
+
+#context {
+  // 图片路径列表
+  let paths = ("风景.webp", "猫猫.png", "AI人像.jpg")
+  // 图片标题列表（对应 paths）
+  let captions = ("风景", "猫猫", "AI人像")
+  // Alt Text 列表
+  let alts = ("不同主体的视觉表现", "", "")
+  
+  let is_subfigure = true 
+  let main_caption = "不同主体的视觉表现"
+  
+  let gap = 0.3cm  // 图片间隙
+  let max-width = 13.4cm
+  let min-height = 6cm
+  
+  // 测量所有图片的原始尺寸
+  let sizes = paths.zip(captions).zip(alts).map(item => {
+    let p = item.at(0).at(0)
+    let c = item.at(0).at(1)
+    let alt = item.at(1)
+    let img = image(p)
+    let s = measure(img)
+    (width: s.width, height: s.height, path: p, caption: c, alt: alt, ratio: s.width / s.height)
+  })
+  
+  // 函数：计算一组图片等高排列时的高度
+  let calc-row-height(imgs, total-width) = {
+    // 计算所有图片宽高比之和
+    let ratio-sum = imgs.map(i => i.ratio).sum()
+    // 等高时的高度 = 总宽度 / 宽高比之和
+    total-width / ratio-sum
+  }
+  
+  // 分行算法
+  let rows = ()
+  
+  if is_subfigure {
+    // 方案一（子图模式）：强制所有图片在同一行
+    rows.push(sizes)
+  } else {
+    // 方案二（独立模式）：自动换行逻辑
+    let remaining = sizes
+    
+    while remaining.len() > 0 {
+      let row = ()
+      let found = false
+      
+      // 尝试放入尽可能多的图片
+      for n in range(1, remaining.len() + 1) {
+        let candidate = remaining.slice(0, n)
+        let gaps = (n - 1) * gap
+        let available-width = max-width - gaps
+        let row-h = calc-row-height(candidate, available-width)
+        
+        if row-h < min-height and n > 1 {
+          // 高度不够，使用前一个数量
+          row = remaining.slice(0, n - 1)
+          remaining = remaining.slice(n - 1)
+          found = true
+          break
+        }
+      }
+      
+      if not found {
+        // 所有图片都能放，或者只有一张图片
+        row = remaining
+        remaining = ()
+      }
+      
+      rows.push(row)
+    }
+  }
+  
+  // 渲染函数
+  let render-rows(rows) = {
+    for row in rows {
+      let n = row.len()
+      let gaps = (n - 1) * gap
+      let available-width = max-width - gaps
+      let row-height = calc-row-height(row, available-width)
+      
+      // 限制最大高度
+      if row-height > max-width {
+        row-height = max-width
+      }
+      
+      align(center, grid(
+        columns: n,
+        gutter: gap,
+        ..row.enumerate().map(item => {
+          let i = item.at(0)
+          let img-data = item.at(1)
+          // 使用比例计算宽度：w = row-height * ratio
+          let w = row-height * img-data.ratio
+          
+          if is_subfigure {
+             // 子图模式：上面是图，下面是 (a) 文件名
+             // 使用文件名(img-data.caption)作为子图注，忽略其他 Alt
+             let sub-label = numbering("a", i + 1)
+             let sub-text = [ (#sub-label) #img-data.caption ]
+             
+             v(0.5em)
+             align(center, block({
+               image(img-data.path, width: w, height: row-height)
+               // 子图注样式：与大图注一致 (FONT_FS, zh(3))
+               align(center, text(font: FONT_FS, size: zh(3))[#sub-text])
+             }))
+          } else {
+             // 独立模式：完整的 figure
+             figure(
+               image(img-data.path, width: w, height: row-height),
+               caption: [ #img-data.caption ]
+             )
+          }
+        })
+      ))
+      if is_subfigure { v(0.5em) } else { v(0.3em) }
+    }
+  }
+  
+  // 根据模式输出
+  if is_subfigure {
+    figure(
+      context { render-rows(rows) },
+      caption: [ #main_caption ]
+    )
+  } else {
+    render-rows(rows)
+  }
+}
+
+这里展示了风景、动物与人像在同一组图中的排版效果，注意所有子图注字体均已自动调整为规范样式。
 
 == 扩展能力与使用方式
 

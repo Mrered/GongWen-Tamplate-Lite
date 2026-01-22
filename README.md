@@ -17,6 +17,8 @@
 
 **简洁的 Markdown 语法**：你只需要专注于用 Markdown 编写内容，剩下的交给模板。
 
+**强大的图片排版**：支持单图自动编号、多图并排（自动等高）、子图模式（自动(a)(b)编号），且完全无需手动干预。
+
 ## 👀 效果预览
 
 [Markdown to Typst to PDF](/report.pdf)
@@ -67,7 +69,7 @@ cd GongWen-Template-Lite
 打开终端，确保你位于项目目录下，然后运行以下命令：
 
 ```sh
-pandoc -f markdown -t typst --template template.typ report.md -L filter.lua | typst compile - report.pdf
+pandoc -f markdown -t typst --template template.typ -L filter.lua report.md | typst compile - report.pdf
 ```
 
 🎉 恭喜！现在你的文件夹里应该已经出现了一个名为 `report.pdf` 的文件，快打开看看吧！ [report.pdf](report.pdf)
@@ -89,7 +91,7 @@ pandoc -f markdown -t typst --template template.typ report.md -L filter.lua | ty
 如果你想查看从 Markdown 转换到 Typst 的中间文件（`.typ`），方便进行调试或修改，可以使用下面的命令：
 
 ```sh
-pandoc -f markdown -t typst --template template.typ report.md -L filter.lua -o report.typ
+pandoc -f markdown -t typst --template template.typ -L filter.lua -o report.typ report.md
 ```
 
 这会生成一个 `report.typ` 文件，你可以用文本编辑器打开它。 [report.typ](report.typ)
@@ -124,6 +126,40 @@ pandoc -f markdown -t docx --reference-doc=template.dotx -L filter.lua report.md
 ## 🔮 计划
 
 - [ ] 使用 wails 开发桌面应用。
+
+## 🖼️ 图片排版指南
+
+本模板内置了强大的图片自动排版功能，支持以下三种模式：
+
+### 1. 单图模式（自动编号）
+标准的图片语法，系统会自动将其居中、限制最大宽度（13.4cm），并自动添加"图X"编号。
+
+```markdown
+![](image.jpg)
+```
+> **效果**：图片居中，下方显示「图1 文件名」。
+
+### 2. 多图独立模式（自动等高）
+在同一行书写多个无 Alt Text 的图片，系统会自动将它们并排显示，并保证**高度一致**。
+
+```markdown
+![](a.jpg) ![](b.jpg)
+```
+> **效果**：两张图并排，左图为「图1 a」，右图为「图2 b」。
+
+### 3. 子图组合模式（(a)(b)编号）
+如果图片包含 Alt Text（`![说明]()`），系统会自动切换为子图模式。
+
+- **总标题**：使用第一张图的 Alt Text。
+- **子标题**：使用各自的文件名，并自动编号 `(a)` `(b)`。
+- **布局**：强制同一行显示。
+
+```markdown
+![算法对比](method_a.jpg) ![忽略](method_b.jpg)
+```
+> **效果**：两张图并排。
+> 总标题：「图1 算法对比」
+> 子图注：「(a) method_a」 「(b) method_b」
 
 ## 📄 许可证
 
