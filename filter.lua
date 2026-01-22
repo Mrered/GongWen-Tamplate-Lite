@@ -189,27 +189,31 @@ local normalize = {
   
   
   -- 处理图片元素
-  -- 由于 Image 是内联元素，我们需要返回一个包含 RawInline 的列表
-  -- 但为了更好地处理图片，我们将其转换为块级元素
+  -- 支持单图和多图（一行多图）两种情况
   Para = function(el)
     local explicit_indent = false
     local explicit_noindent = false
     
-    -- 检查段落是否只包含一个图片
-    if #el.content == 1 and el.content[1].t == 'Image' then
-      local img = el.content[1]
-      
-      -- 递增计数器
+    -- 收集段落中所有的图片
+    local images = {}
+    for _, item in ipairs(el.content) do
+      if item.t == 'Image' then
+        table.insert(images, item)
+      end
+    end
+    
+    -- 如果没有图片，跳过图片处理
+    if #images == 0 then
+      -- 继续执行原有的段落处理逻辑
+    elseif #images == 1 then
+      -- 单图处理
+      local img = images[1]
       figure_counter = figure_counter + 1
       
-      -- 提取文件名（不含路径和扩展名）
       local path = img.src
-      local filename = path:match("([^/]+)$") or path  -- 提取文件名
-      local caption = filename:gsub("%.[^.]*$", "")     -- 去除扩展名
+      local filename = path:match("([^/]+)$") or path
+      local caption = filename:gsub("%.[^.]*$", "")
       
-      -- 生成 Typst figure 代码
-      -- 在 Typst 中测量图片尺寸并应用等比例缩放算法
-      -- caption 不包含编号，由 Typst 自动添加
       local typst_code = string.format(
         '#figure(\n' ..
         '  context {\n' ..
@@ -219,18 +223,15 @@ local normalize = {
         '    let y = img-size.height\n' ..
         '    let max-size = 13.4cm\n' ..
         '    \n' ..
-        '    // 应用缩放算法：计算缩放比例，保持图片比例\n' ..
         '    let new-x = x\n' ..
         '    let new-y = y\n' ..
         '    \n' ..
-        '    // 如果宽度超过限制，按宽度缩放\n' ..
         '    if x > max-size {\n' ..
         '      let scale = max-size / x\n' ..
         '      new-x = max-size\n' ..
         '      new-y = y * scale\n' ..
         '    }\n' ..
         '    \n' ..
-        '    // 如果高度仍然超过限制，再按高度缩放\n' ..
         '    if new-y > max-size {\n' ..
         '      let scale = max-size / new-y\n' ..
         '      new-x = new-x * scale\n' ..
@@ -241,15 +242,212 @@ local normalize = {
         '  },\n' ..
         '  caption: [%s],\n' ..
         ') <fig-%%d>\n',
-        path,
-        path,
-        caption
+        path, path, caption
       )
       
-      -- 替换 %%d 为实际的 figure_counter
       typst_code = typst_code:gsub('%%d', tostring(figure_counter))
+      return pandoc.RawBlock('typst', typst_code)
       
-      -- 返回 RawBlock 以插入 Typst 代码
+    else
+      -- 多图处理：一行多图
+      -- 收集所有图片路径和标题
+      local paths = {}
+      local is_subfigure_mode = false
+      
+      -- 第一次遍历：检查是否应该启用子图模式
+      -- 如果任何一个图片有 Alt Text (caption)，则启用子图模式
+      for _, img in ipairs(images) do
+        local alt = pandoc.utils.stringify(img.caption)
+        if alt ~= "" then
+          is_subfigure_mode = true
+          break
+        end
+      end
+      
+      -- 如果是子图模式，figure_counter只增加1（为了大图号）
+      local main_caption = ""
+      if is_subfigure_mode then
+        figure_counter = figure_counter + 1
+      end
+      
+      for _, img in ipairs(images) do
+        local path = img.src
+        local filename = path:match("([^/]+)$") or path
+        local caption = filename:gsub("%.[^.]*$", "")
+        local alt = pandoc.utils.stringify(img.caption)
+        
+        -- 如果是独立模式，每张图计数器都要增加
+        local current_fig_num = 0
+        if not is_subfigure_mode then
+          figure_counter = figure_counter + 1
+          current_fig_num = figure_counter
+        end
+        
+        table.insert(paths, {path = path, caption = caption, alt = alt, fig_num = current_fig_num})
+      end
+      
+      -- 子图模式的总标题使用第一张图的Alt Text (img.caption)
+      if is_subfigure_mode and #paths > 0 then
+        -- 注意：paths[1].alt 存储的是 pandoc.utils.stringify(img.caption)
+        main_caption = paths[1].alt
+      end
+      
+      -- 生成图片路径数组字符串
+      local paths_str = ""
+      for i, p in ipairs(paths) do
+        if i > 1 then paths_str = paths_str .. ", " end
+        paths_str = paths_str .. '"' .. p.path .. '"'
+      end
+      
+      -- 生成子图Alt Text列表
+      local alts_str = ""
+      for i, p in ipairs(paths) do
+        if i > 1 then alts_str = alts_str .. ", " end
+        alts_str = alts_str .. '"' .. p.alt .. '"'
+      end
+      
+      -- 生成 Typst 代码来处理多图布局
+      local typst_code = [[
+#context {
+  // 图片路径列表
+  let paths = (]] .. paths_str .. [[)
+  // 图片标题列表（对应 paths）
+  let captions = (]] .. table.concat(
+    (function() 
+       local quote_captions = {}
+       for _, p in ipairs(paths) do table.insert(quote_captions, '"' .. p.caption .. '"') end 
+       return quote_captions 
+     end)(), 
+    ", "
+  ) .. [[)
+  // Alt Text 列表
+  let alts = (]] .. alts_str .. [[)
+  
+  let is_subfigure = ]] .. tostring(is_subfigure_mode) .. [[ 
+  let main_caption = "]] .. main_caption .. [["
+  
+  let gap = 0.3cm  // 图片间隙
+  let max-width = 13.4cm
+  let min-height = 6cm
+  
+  // 测量所有图片的原始尺寸
+  let sizes = paths.zip(captions).zip(alts).map(item => {
+    let p = item.at(0).at(0)
+    let c = item.at(0).at(1)
+    let alt = item.at(1)
+    let img = image(p)
+    let s = measure(img)
+    (width: s.width, height: s.height, path: p, caption: c, alt: alt, ratio: s.width / s.height)
+  })
+  
+  // 函数：计算一组图片等高排列时的高度
+  let calc-row-height(imgs, total-width) = {
+    // 计算所有图片宽高比之和
+    let ratio-sum = imgs.map(i => i.ratio).sum()
+    // 等高时的高度 = 总宽度 / 宽高比之和
+    total-width / ratio-sum
+  }
+  
+  // 分行算法
+  let rows = ()
+  
+  if is_subfigure {
+    // 方案一（子图模式）：强制所有图片在同一行
+    rows.push(sizes)
+  } else {
+    // 方案二（独立模式）：自动换行逻辑
+    let remaining = sizes
+    
+    while remaining.len() > 0 {
+      let row = ()
+      let found = false
+      
+      // 尝试放入尽可能多的图片
+      for n in range(1, remaining.len() + 1) {
+        let candidate = remaining.slice(0, n)
+        let gaps = (n - 1) * gap
+        let available-width = max-width - gaps
+        let row-h = calc-row-height(candidate, available-width)
+        
+        if row-h < min-height and n > 1 {
+          // 高度不够，使用前一个数量
+          row = remaining.slice(0, n - 1)
+          remaining = remaining.slice(n - 1)
+          found = true
+          break
+        }
+      }
+      
+      if not found {
+        // 所有图片都能放，或者只有一张图片
+        row = remaining
+        remaining = ()
+      }
+      
+      rows.push(row)
+    }
+  }
+  
+  // 渲染函数
+  let render-rows(rows) = {
+    for row in rows {
+      let n = row.len()
+      let gaps = (n - 1) * gap
+      let available-width = max-width - gaps
+      let row-height = calc-row-height(row, available-width)
+      
+      // 限制最大高度
+      if row-height > max-width {
+        row-height = max-width
+      }
+      
+      align(center, grid(
+        columns: n,
+        gutter: gap,
+        ..row.enumerate().map(item => {
+          let i = item.at(0)
+          let img-data = item.at(1)
+          // 使用比例计算宽度：w = row-height * ratio
+          let w = row-height * img-data.ratio
+          
+          if is_subfigure {
+             // 子图模式：上面是图，下面是 (a) 文件名
+             // 使用文件名(img-data.caption)作为子图注，忽略其他 Alt
+             let sub-label = numbering("a", i + 1)
+             let sub-text = [ (#sub-label) #img-data.caption ]
+             
+             v(0.5em)
+             align(center, block({
+               image(img-data.path, width: w, height: row-height)
+               // 子图注样式：与大图注一致 (FONT_FS, zh(3))
+               align(center, text(font: FONT_FS, size: zh(3))[#sub-text])
+             }))
+          } else {
+             // 独立模式：完整的 figure
+             figure(
+               image(img-data.path, width: w, height: row-height),
+               caption: [ #img-data.caption ]
+             )
+          }
+        })
+      ))
+      if is_subfigure { v(0.5em) } else { v(0.3em) }
+    }
+  }
+  
+  // 根据模式输出
+  if is_subfigure {
+    figure(
+      context { render-rows(rows) },
+      caption: [ #main_caption ]
+    )
+  } else {
+    render-rows(rows)
+  }
+}
+
+]]
+      
       return pandoc.RawBlock('typst', typst_code)
     end
     
