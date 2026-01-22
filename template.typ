@@ -135,20 +135,35 @@
 }
 
 // 应用自定义标题样式
+// 确保所有标题都与下一段内容保持在同一页（Sticky Behavior）
+// 采用了 "Reservation" 技术：在标题块中包含一段不可见的高度（threshold），
+// 强制排版引擎检查是否有足够空间容纳标题+后续内容。如果空间不足，整体换页。
+
+
+// 应用自定义标题样式，并确保标题与下一段内容同页
 #show heading: it => {
-  if it.level != 1 {
+  // 一级标题（文档标题）保持原有样式，不应用 sticky 逻辑
+  if it.level == 1 {
+    custom-heading(it.level, it.body, numbering: it.numbering)
+  } else {
+    // 其他标题：应用 strict sticky 逻辑
+    let spacing = 13.9pt
+    let threshold = 3em // 预留给下一段的空间阈值
+
     block(
       sticky: true,
-      above: 13.9pt,
-      below: 13.9pt,
-    )[it]
-  } else {
-    it
+      above: spacing,
+      below: spacing,
+      {
+        // "Reservation" 技术：包含标题+预留空间在不可中断块中
+        block(
+          custom-heading(it.level, it.body, numbering: it.numbering) + v(threshold),
+          breakable: false,
+        )
+        v(-threshold)
+      },
+    )
   }
-}
-
-#show heading: it => {
-  [#custom-heading(it.level, it.body, numbering: it.numbering)]
 }
 
 // 重置计数器在文档开始时
