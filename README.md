@@ -1,3 +1,5 @@
+> 本仓库已在 [Presto-io | 官方模板](https://github.com/Presto-io/presto-official-templates/tree/main/gongwen) 中继续开发。
+
 # 📝 类公文模板
 
 一个旨在快速生成公文格式 PDF 的简单模板，基于 [Pandoc](https://pandoc.org/) 和 [Typst](https://typst.app/) ，非常适合用于撰写个人报告、工作总结等。
